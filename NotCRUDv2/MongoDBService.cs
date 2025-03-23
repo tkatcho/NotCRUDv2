@@ -34,9 +34,8 @@ public class MongoDBService
     {
         var filter = Builders<BsonDocument>.Filter.And(
             Builders<BsonDocument>.Filter.Eq("Type", TypeDocument.BD.ToString()),
-            Builders<BsonDocument>.Filter.Regex("Dessinateur", new BsonRegularExpression(dessinateur, "i"))
+            Builders<BsonDocument>.Filter.Regex("Details.dessinateur", new BsonRegularExpression(dessinateur, "i"))
         );
-
         return await _ouvragesCollection.Find(filter).ToListAsync();
     }
 
@@ -60,7 +59,6 @@ public class MongoDBService
 
     private BsonDocument ConvertOuvrageToDocument(Document ouvrage)
     {
-        // Get the next available ID (you'll need to implement this method)
         int nextId = GetNextSequenceValue("ouvrageId");
 
         var document = new BsonDocument
@@ -87,7 +85,6 @@ public class MongoDBService
         return document;
     }
 
-    // Method to get the next sequence value (auto-increment ID)
     private int GetNextSequenceValue(string sequenceName)
     {
         var filter = Builders<BsonDocument>.Filter.Eq("_id", sequenceName);
@@ -111,14 +108,12 @@ public class MongoDBService
         var dispo = document["Dispo"].AsBoolean;
         var prix = document["Prix"].AsDouble;
 
-        // Convert the BsonDocument Details back to your C# object
         var detailsJson = document["Details"].ToJson();
         var details = System.Text.Json.JsonSerializer.Deserialize<Document>(detailsJson);
 
         int id = document["_id"].AsInt32;
 
-        // Update your Document constructor to accept these parameters
-        Document document1 = new(id,titre, dispo, prix, details)
+        Document document1 = new(id, titre, dispo, prix, details,type) 
         {
             Id = id
         };

@@ -8,7 +8,7 @@ static class Utils
 {
     static Library library = new();
 
-    public static void InsertDocument()
+    public static void InsertDocument(int cpt=1)
     {
         string[] optionsType =
         [
@@ -20,6 +20,8 @@ static class Utils
         InteractiveMenu<string> menu = new("Choisissez le type d'ouvrage", optionsType, true);
         int type = menu.Display();
 
+        if (type == -1)
+            return;
         var commonChoices = new List<FieldForm>
         {
             new StringForm("titre","Titre", true),
@@ -28,7 +30,7 @@ static class Utils
         };
 
         List<FieldForm> fieldForms = [.. commonChoices];
-        string typeLivre = "";
+        TypeDocument typeLivre = TypeDocument.Livre;
         switch (type)
         {
             case 0: //Livre
@@ -44,14 +46,14 @@ static class Utils
 
                 fieldForms.Add(new ArrayForm("exemplaires", "Exemplaires"));
                 fieldForms.Add(bookDetailsForm);
-                typeLivre = "Livre";
+                typeLivre = TypeDocument.Livre;
                 break;
             case 1:
                 var periodDetailsForm = new ObjectForm("détails", "Details", true);
                 periodDetailsForm.AddProperty(new DateForm("date", "Date"));
                 periodDetailsForm.AddProperty(new StringForm("periodicite", "periodicite"));
                 fieldForms.Add(periodDetailsForm);
-                typeLivre = "Périodique";
+                typeLivre = TypeDocument.Periodique;
                 break;
             case 2:
                 var bdDetailsForm = new ObjectForm("détails", "Details", true);
@@ -64,7 +66,7 @@ static class Utils
                 bdDetailsForm.AddProperty(new StringForm("auteur", "Auteur", maxLength: 50));
                 bdDetailsForm.AddProperty(new StringForm("dessinateur", "Dessinateur", maxLength: 50));
                 fieldForms.Add(bdDetailsForm);
-                typeLivre = "BD";
+                typeLivre = TypeDocument.BD;
                 break;
 
         }
@@ -76,16 +78,89 @@ static class Utils
 
         string titre = (string)val["titre"];
         double prix = (double)val["prix"];
-        bool dispo = (string)val["dispo"] =="true";
+        bool dispo = (string)val["dispo"] == "true";
         var details = val["détails"];
-        if (type == 0)
+
+        for (int i = 0; i < cpt; i++)
         {
-            var exemplaires = (string[])val["exemplaires"];
-            library.AjouterOuvrage(new Document(titre, dispo, prix, details,exemplaires));
+            if (typeLivre == TypeDocument.Livre)
+            {
+                var exemplaires = (string[])val["exemplaires"];
+                library.AjouterOuvrage(new Document(titre, dispo, prix, details, exemplaires, typeLivre));
+                return;
+            }
+            library.AjouterOuvrage(new Document(titre, dispo, prix, details, typeLivre));
+        }
+        return;
+
+    }
+
+    public static void RechercherPeriodiques()
+    {
+
+        var periodiques = library.RechercherParType(TypeDocument.Periodique).ToArray();
+
+        if (periodiques.Length == 0)
+        {
+            Console.WriteLine("Aucun périodique trouvé.");
             return;
         }
-        library.AjouterOuvrage(new Document(titre, dispo, prix, details));
+        InteractiveMenu<Document> menu = new("RECHERCHE DE PÉRIODIQUES", periodiques, true);
+        menu.Display();
+    }
 
-        //ajouter le livre
+    public static void RechercherBDParDessinateur(string input)
+    {
+        var bd = library.RechercherParDessinateur(input).ToArray();
+        if (bd.Length == 0)
+        {
+            Console.WriteLine("Aucune BD trouvée.");
+            return;
+        }
+        InteractiveMenu<Document> menu = new("RECHERCHE DE DESSINATEURS", bd, true);
+        menu.Display();
+    }
+
+    public static void PrixMoyenParOuvrage()
+    {
+        List<string> options = new List<string>();
+        var allTypes = Enum.GetValues(typeof(TypeDocument)).Cast<TypeDocument>();
+
+        foreach (var type in allTypes)
+        {
+            var documents = library.RechercherParType(type);
+            if (documents.Count == 0)
+            {
+                continue;
+            }
+            double prixMoyen = documents.Average(doc => doc.Prix);
+            int nombreOuvrages = documents.Count;
+            options.Add($"{type}: {prixMoyen:F2}€ (sur {nombreOuvrages} ouvrages)");
+        }
+
+        var allDocuments = allTypes.SelectMany(type => library.RechercherParType(type)).ToList();
+        if (allDocuments.Count > 0)
+        {
+            double prixMoyenTotal = allDocuments.Average(doc => doc.Prix);
+            options.Add($"Prix moyen global: {prixMoyenTotal:F2}€ (sur {allDocuments.Count} ouvrages)");
+        }
+        else
+        {
+            options.Add("Aucun ouvrage dans la bibliothèque.");
+        }
+
+        if (options.Count == 0)
+        {
+            Console.WriteLine("Aucun ouvrage dans la bibliothèque.");
+            return;
+        }
+
+        InteractiveMenu<string> menu = new("PRIX MOYEN PAR TYPE D'OUVRAGE", options.ToArray(), true);
+        menu.Display();
+    }
+
+    public static void InsertMultiple(int cpt)
+    {
+       InsertDocument(cpt);
     }
 }
